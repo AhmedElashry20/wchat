@@ -2,9 +2,32 @@
    WChat - Main Application
    ================================ */
 
+// Global auth helpers
+function switchAuthTab(tab) {
+  document.getElementById('login-form').classList.toggle('hidden', tab !== 'login');
+  document.getElementById('register-form').classList.toggle('hidden', tab !== 'register');
+  document.getElementById('login-tab-btn').classList.toggle('active', tab === 'login');
+  document.getElementById('register-tab-btn').classList.toggle('active', tab === 'register');
+  document.getElementById('login-error').classList.add('hidden');
+  document.getElementById('register-error').classList.add('hidden');
+}
+
+function togglePassword(inputId, btn) {
+  const input = document.getElementById(inputId);
+  const icon = btn.querySelector('i');
+  if (input.type === 'password') {
+    input.type = 'text';
+    icon.className = 'fas fa-eye-slash';
+  } else {
+    input.type = 'password';
+    icon.className = 'fas fa-eye';
+  }
+}
+
 class WChatApp {
   constructor() {
     this.user = null;
+    this.token = null;
     this.currentRoom = null;
     this.selectedColor = '#6C5CE7';
     this.isInVoice = false;
@@ -12,16 +35,41 @@ class WChatApp {
   }
 
   init() {
-    this.bindLoginEvents();
+    this.bindAuthEvents();
     this.bindChatEvents();
     this.bindVoiceEvents();
     this.bindUIEvents();
     uiComponent.setupEmojiPicker();
+
+    // Check saved session
+    this.checkSession();
   }
 
-  // ========== LOGIN ==========
+  // ========== AUTH ==========
 
-  bindLoginEvents() {
+  async checkSession() {
+    const token = localStorage.getItem('wchat_token');
+    if (!token) return;
+
+    try {
+      const res = await fetch('/api/me', {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      const data = await res.json();
+
+      if (res.ok && data.user) {
+        this.token = token;
+        this.user = data.user;
+        this.enterApp();
+      } else {
+        localStorage.removeItem('wchat_token');
+      }
+    } catch {
+      // Server not available
+    }
+  }
+
+  bindAuthEvents() {
     // Avatar color picker
     document.querySelectorAll('.avatar-color').forEach(el => {
       el.addEventListener('click', () => {
@@ -32,36 +80,171 @@ class WChatApp {
     });
 
     // Login form
-    document.getElementById('login-form').addEventListener('submit', (e) => {
+    document.getElementById('login-form').addEventListener('submit', async (e) => {
       e.preventDefault();
-      const username = document.getElementById('username-input').value.trim();
-      if (!username) return;
-      this.login(username);
+      const btn = document.getElementById('login-btn');
+      const errorEl = document.getElementById('login-error');
+      errorEl.classList.add('hidden');
+
+      const username = document.getElementById('login-username').value.trim();
+      const password = document.getElementById('login-password').value;
+
+      if (!username || !password) return;
+
+      btn.classList.add('btn-loading');
+      btn.disabled = true;
+
+      try {
+        const res = await fetch('/api/login', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ username, password })
+        });
+        const data = await res.json();
+
+        if (res.ok && data.success) {
+          this.token = data.token;
+          this.user = data.user;
+          localStorage.setItem('wchat_token', data.token);
+          this.enterApp();
+        } else {
+          errorEl.textContent = data.error || 'خطأ في تسجيل الدخول';
+          errorEl.classList.remove('hidden');
+        }
+      } catch {
+        errorEl.textContent = 'خطأ في الاتصال بالسيرفر';
+        errorEl.classList.remove('hidden');
+      }
+
+      btn.classList.remove('btn-loading');
+      btn.disabled = false;
+    });
+
+    // Register form
+    document.getElementById('register-form').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const btn = document.getElementById('register-btn');
+      const errorEl = document.getElementById('register-error');
+      errorEl.classList.add('hidden');
+
+      const username = document.getElementById('register-username').value.trim();
+      const email = document.getElementById('register-email').value.trim();
+      const password = document.getElementById('register-password').value;
+      const confirm = document.getElementById('register-confirm').value;
+
+      if (!username || !password) return;
+
+      if (password !== confirm) {
+        errorEl.textContent = 'كلمة المرور غير متطابقة';
+        errorEl.classList.remove('hidden');
+        return;
+      }
+
+      if (password.length < 6) {
+        errorEl.textContent = 'كلمة المرور يجب أن تكون 6 أحرف على الأقل';
+        errorEl.classList.remove('hidden');
+        return;
+      }
+
+      btn.classList.add('btn-loading');
+      btn.disabled = true;
+
+      const avatar = Helpers.getAvatar(username, this.selectedColor);
+
+      try {
+        const res = await fetch('/api/register', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ username, email, password, avatar })
+        });
+        const data = await res.json();
+
+        if (res.ok && data.success) {
+          this.token = data.token;
+          this.user = data.user;
+          localStorage.setItem('wchat_token', data.token);
+          Helpers.showToast('تم إنشاء الحساب بنجاح!', 'success');
+          this.enterApp();
+        } else {
+          errorEl.textContent = data.error || 'خطأ في إنشاء الحساب';
+          errorEl.classList.remove('hidden');
+        }
+      } catch {
+        errorEl.textContent = 'خطأ في الاتصال بالسيرفر';
+        errorEl.classList.remove('hidden');
+      }
+
+      btn.classList.remove('btn-loading');
+      btn.disabled = false;
+    });
+
+    // Check username availability (on typing)
+    let checkTimer;
+    document.getElementById('register-username').addEventListener('input', (e) => {
+      const status = document.getElementById('username-status');
+      const val = e.target.value.trim();
+
+      clearTimeout(checkTimer);
+      if (val.length < 3) {
+        status.textContent = '';
+        return;
+      }
+
+      status.textContent = '...';
+      checkTimer = setTimeout(async () => {
+        try {
+          const res = await fetch(`/api/check-username/${encodeURIComponent(val)}`);
+          const data = await res.json();
+          status.textContent = data.available ? '✅' : '❌';
+        } catch {
+          status.textContent = '';
+        }
+      }, 500);
     });
   }
 
-  login(username) {
-    this.user = {
-      username,
-      avatar: Helpers.getAvatar(username, this.selectedColor)
-    };
+  enterApp() {
+    document.getElementById('auth-screen').classList.add('hidden');
+    document.getElementById('app').classList.remove('hidden');
+    document.getElementById('my-username').textContent = this.user.username;
+    document.getElementById('my-avatar').src = this.user.avatar;
 
+    // Connect socket and authenticate
     socketService.connect();
     socketService.on('_connected', () => {
-      socketService.register(this.user);
-      document.getElementById('login-screen').classList.add('hidden');
-      document.getElementById('app').classList.remove('hidden');
-      document.getElementById('my-username').textContent = username;
-      document.getElementById('my-avatar').src = this.user.avatar;
-      Helpers.showToast(`مرحباً ${username}!`, 'success');
+      socketService.socket.emit('auth:token', { token: this.token });
     });
 
     this.setupSocketListeners();
+    Helpers.showToast(`مرحباً ${this.user.username}!`, 'success');
+  }
+
+  logout() {
+    localStorage.removeItem('wchat_token');
+    this.token = null;
+    this.user = null;
+    if (this.isInVoice) this.leaveVoice();
+    if (socketService.socket) socketService.socket.disconnect();
+    document.getElementById('app').classList.add('hidden');
+    document.getElementById('auth-screen').classList.remove('hidden');
+    // Reset forms
+    document.getElementById('login-form').reset();
+    document.getElementById('register-form').reset();
+    switchAuthTab('login');
   }
 
   // ========== SOCKET LISTENERS ==========
 
   setupSocketListeners() {
+    socketService.on('auth:success', (user) => {
+      console.log('Authenticated:', user.username);
+    });
+
+    socketService.on('auth:error', (msg) => {
+      Helpers.showToast(msg, 'error');
+      this.logout();
+    });
+
     socketService.on('users:update', (users) => {
       uiComponent.updateUsers(users);
     });
@@ -102,11 +285,7 @@ class WChatApp {
       uiComponent.updateDMList();
 
       if (chatComponent.currentDM === dmTarget || chatComponent.currentDM === msg.from) {
-        chatComponent.appendMessage({
-          ...msg,
-          userId: msg.from,
-          id: msg.id
-        });
+        chatComponent.appendMessage({ ...msg, userId: msg.from, id: msg.id });
       } else if (msg.from !== socketService.id) {
         Helpers.showToast(`رسالة جديدة من ${msg.username}`, 'info');
       }
@@ -126,9 +305,7 @@ class WChatApp {
 
     // Voice signaling
     socketService.on('voice:user-joined', async (data) => {
-      if (this.isInVoice) {
-        await voiceService.handleUserJoined(data.userId);
-      }
+      if (this.isInVoice) await voiceService.handleUserJoined(data.userId);
     });
 
     socketService.on('voice:user-left', (data) => {
@@ -136,9 +313,7 @@ class WChatApp {
     });
 
     socketService.on('voice:offer', async (data) => {
-      if (this.isInVoice) {
-        await voiceService.handleOffer(data.from, data.offer);
-      }
+      if (this.isInVoice) await voiceService.handleOffer(data.from, data.offer);
     });
 
     socketService.on('voice:answer', async (data) => {
@@ -172,21 +347,15 @@ class WChatApp {
     document.getElementById('welcome-message')?.remove();
     document.getElementById('message-input-area').style.display = 'flex';
 
-    // Voice call button
     const voiceBtn = document.getElementById('voice-call-btn');
     if (room && room.type === 'voice') {
       voiceBtn.classList.remove('hidden');
     }
 
-    // Close mobile sidebar
     document.getElementById('sidebar').classList.remove('open');
-
-    // Update active state
-    document.querySelectorAll('.room-item').forEach(el => el.classList.remove('active'));
     uiComponent.updateRooms(uiComponent.rooms);
   }
 
-  // Open DM
   openDM(userId) {
     if (userId === socketService.id) return;
 
@@ -209,8 +378,6 @@ class WChatApp {
 
     document.getElementById('message-input-area').style.display = 'flex';
     document.getElementById('sidebar').classList.remove('open');
-
-    // Switch to DMs tab
     this.switchTab('dms');
   }
 
@@ -224,23 +391,14 @@ class WChatApp {
     const emojiBtn = document.getElementById('emoji-btn');
     const emojiPicker = document.getElementById('emoji-picker');
 
-    // Send message
     const sendMessage = () => {
       const content = input.value.trim();
       if (!content) return;
 
       if (chatComponent.currentDM) {
-        socketService.sendDM({
-          to: chatComponent.currentDM,
-          content,
-          type: 'text'
-        });
+        socketService.sendDM({ to: chatComponent.currentDM, content, type: 'text' });
       } else if (this.currentRoom) {
-        socketService.sendMessage({
-          roomId: this.currentRoom,
-          content,
-          type: 'text'
-        });
+        socketService.sendMessage({ roomId: this.currentRoom, content, type: 'text' });
       }
 
       input.value = '';
@@ -257,22 +415,16 @@ class WChatApp {
       }
     });
 
-    // Auto-resize textarea
     input.addEventListener('input', () => {
       input.style.height = 'auto';
       input.style.height = Math.min(input.scrollHeight, 120) + 'px';
-
-      // Typing indicator
       if (this.currentRoom) {
         socketService.startTyping(this.currentRoom);
         clearTimeout(this.typingTimeout);
-        this.typingTimeout = setTimeout(() => {
-          socketService.stopTyping(this.currentRoom);
-        }, 2000);
+        this.typingTimeout = setTimeout(() => socketService.stopTyping(this.currentRoom), 2000);
       }
     });
 
-    // File attach
     attachBtn.addEventListener('click', () => fileInput.click());
     fileInput.addEventListener('change', async (e) => {
       const file = e.target.files[0];
@@ -281,7 +433,6 @@ class WChatApp {
       fileInput.value = '';
     });
 
-    // Emoji picker
     emojiBtn.addEventListener('click', (e) => {
       e.stopPropagation();
       emojiPicker.classList.toggle('hidden');
@@ -293,13 +444,11 @@ class WChatApp {
       }
     });
 
-    // User search
     document.getElementById('user-search').addEventListener('input', (e) => {
       uiComponent.filterUsers(e.target.value);
     });
   }
 
-  // Upload file and send
   async uploadAndSend(file) {
     const formData = new FormData();
     formData.append('file', file);
@@ -315,24 +464,18 @@ class WChatApp {
       }
 
       const type = Helpers.isImage(file.name) ? 'image' : 'file';
-      const msgData = {
-        content: file.name,
-        type,
-        fileUrl: data.url,
-        fileName: data.name
-      };
+      const msgData = { content: file.name, type, fileUrl: data.url, fileName: data.name };
 
       if (chatComponent.currentDM) {
         socketService.sendDM({ to: chatComponent.currentDM, ...msgData });
       } else if (this.currentRoom) {
         socketService.sendMessage({ roomId: this.currentRoom, ...msgData });
       }
-    } catch (err) {
+    } catch {
       Helpers.showToast('خطأ في رفع الملف', 'error');
     }
   }
 
-  // Insert emoji
   insertEmoji(emoji) {
     const input = document.getElementById('message-input');
     input.value += emoji;
@@ -351,23 +494,17 @@ class WChatApp {
     const recordCancel = document.getElementById('recording-cancel');
     const recordSend = document.getElementById('recording-send');
 
-    // Join/leave voice
     voiceCallBtn.addEventListener('click', async () => {
-      if (this.isInVoice) {
-        this.leaveVoice();
-      } else {
-        await this.joinVoice();
-      }
+      if (this.isInVoice) this.leaveVoice();
+      else await this.joinVoice();
     });
 
-    // Mute
     muteBtn.addEventListener('click', () => {
       const muted = voiceService.toggleMute();
       muteBtn.classList.toggle('active', muted);
       muteBtn.querySelector('i').className = muted ? 'fas fa-microphone-slash' : 'fas fa-microphone';
     });
 
-    // Deafen
     deafenBtn.addEventListener('click', () => {
       const deafened = voiceService.toggleDeafen();
       deafenBtn.classList.toggle('active', deafened);
@@ -378,10 +515,8 @@ class WChatApp {
       }
     });
 
-    // Leave voice
     leaveBtn.addEventListener('click', () => this.leaveVoice());
 
-    // Voice recording
     recordBtn.addEventListener('click', async () => {
       const started = await voiceService.startRecording();
       if (started) {
@@ -402,7 +537,6 @@ class WChatApp {
       recordBtn.classList.remove('recording');
 
       if (result && result.blob) {
-        // Upload voice message
         const file = new File([result.blob], 'voice-message.webm', { type: 'audio/webm' });
         const formData = new FormData();
         formData.append('file', file);
@@ -410,19 +544,14 @@ class WChatApp {
         try {
           const res = await fetch('/upload', { method: 'POST', body: formData });
           const data = await res.json();
-
-          const msgData = {
-            content: Helpers.formatDuration(result.duration),
-            type: 'voice',
-            fileUrl: data.url,
-          };
+          const msgData = { content: Helpers.formatDuration(result.duration), type: 'voice', fileUrl: data.url };
 
           if (chatComponent.currentDM) {
             socketService.sendDM({ to: chatComponent.currentDM, ...msgData });
           } else if (this.currentRoom) {
             socketService.sendMessage({ roomId: this.currentRoom, ...msgData });
           }
-        } catch (err) {
+        } catch {
           Helpers.showToast('خطأ في إرسال الرسالة الصوتية', 'error');
         }
       }
@@ -434,7 +563,7 @@ class WChatApp {
     const success = await voiceService.joinVoice(this.currentRoom);
     if (success) {
       this.isInVoice = true;
-      uiComponent.updateVoicePanel(true, [{ id: socketService.id, ...this.user }]);
+      uiComponent.updateVoicePanel(true, [{ id: socketService.id, username: this.user.username, avatar: this.user.avatar }]);
       document.getElementById('voice-call-btn').querySelector('i').className = 'fas fa-phone-slash';
     }
   }
@@ -450,17 +579,14 @@ class WChatApp {
   // ========== UI EVENTS ==========
 
   bindUIEvents() {
-    // Tab switching
     document.querySelectorAll('.nav-tab').forEach(tab => {
       tab.addEventListener('click', () => this.switchTab(tab.dataset.tab));
     });
 
-    // Mobile menu
     document.getElementById('mobile-menu-btn').addEventListener('click', () => {
       document.getElementById('sidebar').classList.toggle('open');
     });
 
-    // Members toggle
     document.getElementById('members-toggle').addEventListener('click', () => {
       document.getElementById('members-sidebar').classList.toggle('hidden');
     });
@@ -469,14 +595,17 @@ class WChatApp {
       document.getElementById('members-sidebar').classList.add('hidden');
     });
 
-    // Status change
     document.getElementById('status-select').addEventListener('change', (e) => {
       socketService.updateStatus(e.target.value);
       const dot = document.querySelector('.user-profile .status-dot');
       dot.className = `status-dot ${e.target.value}`;
     });
 
-    // Close sidebar on outside click (mobile)
+    // Logout
+    document.getElementById('logout-btn').addEventListener('click', () => {
+      this.logout();
+    });
+
     document.addEventListener('click', (e) => {
       const sidebar = document.getElementById('sidebar');
       const menuBtn = document.getElementById('mobile-menu-btn');

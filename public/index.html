@@ -2,9 +2,15 @@
 <html lang="ar" dir="rtl">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="WChat">
+  <meta name="theme-color" content="#0F0F1A">
   <title>WChat - دردشة صوتية ومحادثات</title>
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>💬</text></svg>">
+  <link rel="apple-touch-icon" href="/assets/icons/icon-192.png">
+  <link rel="manifest" href="/manifest.json">
   <link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@300;400;500;700;800&display=swap" rel="stylesheet">
   <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" rel="stylesheet">
   <link rel="stylesheet" href="/src/css/main.css">
@@ -13,8 +19,8 @@
 </head>
 <body>
 
-  <!-- Login Screen -->
-  <div id="login-screen" class="login-screen">
+  <!-- Auth Screen -->
+  <div id="auth-screen" class="login-screen">
     <div class="login-container">
       <div class="login-logo">
         <div class="logo-icon">
@@ -23,10 +29,54 @@
         <h1>WChat</h1>
         <p>تواصل بلا حدود</p>
       </div>
-      <form id="login-form" class="login-form">
+
+      <!-- Auth Tabs -->
+      <div class="auth-tabs">
+        <button class="auth-tab active" id="login-tab-btn" onclick="switchAuthTab('login')">تسجيل الدخول</button>
+        <button class="auth-tab" id="register-tab-btn" onclick="switchAuthTab('register')">إنشاء حساب</button>
+      </div>
+
+      <!-- Login Form -->
+      <form id="login-form" class="auth-form">
         <div class="input-group">
           <i class="fas fa-user"></i>
-          <input type="text" id="username-input" placeholder="اسم المستخدم" required minlength="2" maxlength="20" autocomplete="off">
+          <input type="text" id="login-username" placeholder="اسم المستخدم" required minlength="3" maxlength="20" autocomplete="username">
+        </div>
+        <div class="input-group">
+          <i class="fas fa-lock"></i>
+          <input type="password" id="login-password" placeholder="كلمة المرور" required minlength="6" autocomplete="current-password">
+          <button type="button" class="toggle-password" onclick="togglePassword('login-password', this)">
+            <i class="fas fa-eye"></i>
+          </button>
+        </div>
+        <div class="auth-error hidden" id="login-error"></div>
+        <button type="submit" class="login-btn" id="login-btn">
+          <span>دخول</span>
+          <i class="fas fa-arrow-left"></i>
+        </button>
+      </form>
+
+      <!-- Register Form -->
+      <form id="register-form" class="auth-form hidden">
+        <div class="input-group">
+          <i class="fas fa-user"></i>
+          <input type="text" id="register-username" placeholder="اسم المستخدم" required minlength="3" maxlength="20" autocomplete="off">
+          <span class="input-status" id="username-status"></span>
+        </div>
+        <div class="input-group">
+          <i class="fas fa-envelope"></i>
+          <input type="email" id="register-email" placeholder="البريد الإلكتروني (اختياري)" autocomplete="email">
+        </div>
+        <div class="input-group">
+          <i class="fas fa-lock"></i>
+          <input type="password" id="register-password" placeholder="كلمة المرور (6 أحرف على الأقل)" required minlength="6" autocomplete="new-password">
+          <button type="button" class="toggle-password" onclick="togglePassword('register-password', this)">
+            <i class="fas fa-eye"></i>
+          </button>
+        </div>
+        <div class="input-group">
+          <i class="fas fa-lock"></i>
+          <input type="password" id="register-confirm" placeholder="تأكيد كلمة المرور" required minlength="6" autocomplete="new-password">
         </div>
         <div class="avatar-picker">
           <p>اختر لون الأفاتار</p>
@@ -39,9 +89,10 @@
             <div class="avatar-color" data-color="#FDCB6E" style="background:#FDCB6E"></div>
           </div>
         </div>
-        <button type="submit" class="login-btn">
-          <span>دخول</span>
-          <i class="fas fa-arrow-left"></i>
+        <div class="auth-error hidden" id="register-error"></div>
+        <button type="submit" class="login-btn" id="register-btn">
+          <span>إنشاء حساب</span>
+          <i class="fas fa-user-plus"></i>
         </button>
       </form>
     </div>
@@ -61,8 +112,8 @@
           <i class="fas fa-comment-dots"></i>
           <span>WChat</span>
         </div>
-        <button class="sidebar-toggle" id="sidebar-toggle">
-          <i class="fas fa-bars"></i>
+        <button class="logout-btn" id="logout-btn" title="تسجيل خروج">
+          <i class="fas fa-sign-out-alt"></i>
         </button>
       </div>
 
