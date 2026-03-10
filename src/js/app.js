@@ -29,9 +29,11 @@ class WChatApp {
     this.user = null;
     this.token = null;
     this.currentRoom = null;
+    this.currentRoomType = null;
     this.selectedColor = '#6C5CE7';
     this.isInVoice = false;
     this.typingTimeout = null;
+    this.listenersSet = false;
   }
 
   init() {
@@ -40,8 +42,6 @@ class WChatApp {
     this.bindVoiceEvents();
     this.bindUIEvents();
     uiComponent.setupEmojiPicker();
-
-    // Check saved session
     this.checkSession();
   }
 
@@ -64,8 +64,8 @@ class WChatApp {
       } else {
         localStorage.removeItem('wchat_token');
       }
-    } catch {
-      // Server not available
+    } catch (e) {
+      console.error('Session check failed:', e);
     }
   }
 
@@ -88,7 +88,6 @@ class WChatApp {
 
       const username = document.getElementById('login-username').value.trim();
       const password = document.getElementById('login-password').value;
-
       if (!username || !password) return;
 
       btn.classList.add('btn-loading');
@@ -111,7 +110,7 @@ class WChatApp {
           errorEl.textContent = data.error || 'خطأ في تسجيل الدخول';
           errorEl.classList.remove('hidden');
         }
-      } catch {
+      } catch (e) {
         errorEl.textContent = 'خطأ في الاتصال بالسيرفر';
         errorEl.classList.remove('hidden');
       }
@@ -169,7 +168,7 @@ class WChatApp {
           errorEl.textContent = data.error || 'خطأ في إنشاء الحساب';
           errorEl.classList.remove('hidden');
         }
-      } catch {
+      } catch (e) {
         errorEl.textContent = 'خطأ في الاتصال بالسيرفر';
         errorEl.classList.remove('hidden');
       }
@@ -178,27 +177,20 @@ class WChatApp {
       btn.disabled = false;
     });
 
-    // Check username availability (on typing)
+    // Check username availability
     let checkTimer;
     document.getElementById('register-username').addEventListener('input', (e) => {
       const status = document.getElementById('username-status');
       const val = e.target.value.trim();
-
       clearTimeout(checkTimer);
-      if (val.length < 3) {
-        status.textContent = '';
-        return;
-      }
-
+      if (val.length < 3) { status.textContent = ''; return; }
       status.textContent = '...';
       checkTimer = setTimeout(async () => {
         try {
           const res = await fetch(`/api/check-username/${encodeURIComponent(val)}`);
           const data = await res.json();
           status.textContent = data.available ? '✅' : '❌';
-        } catch {
-          status.textContent = '';
-        }
+        } catch { status.textContent = ''; }
       }, 500);
     });
   }
@@ -209,10 +201,13 @@ class WChatApp {
     document.getElementById('my-username').textContent = this.user.username;
     document.getElementById('my-avatar').src = this.user.avatar;
 
-    // Connect socket and authenticate
+    // Connect socket
+    socketService.clearListeners();
     socketService.connect();
+
     socketService.on('_connected', () => {
-      socketService.socket.emit('auth:token', { token: this.token });
+      console.log('Socket connected, authenticating...');
+      socketService.authenticate(this.token);
     });
 
     this.setupSocketListeners();
@@ -223,11 +218,13 @@ class WChatApp {
     localStorage.removeItem('wchat_token');
     this.token = null;
     this.user = null;
+    this.currentRoom = null;
+    this.currentRoomType = null;
     if (this.isInVoice) this.leaveVoice();
     if (socketService.socket) socketService.socket.disconnect();
+    socketService.clearListeners();
     document.getElementById('app').classList.add('hidden');
     document.getElementById('auth-screen').classList.remove('hidden');
-    // Reset forms
     document.getElementById('login-form').reset();
     document.getElementById('register-form').reset();
     switchAuthTab('login');
@@ -237,7 +234,7 @@ class WChatApp {
 
   setupSocketListeners() {
     socketService.on('auth:success', (user) => {
-      console.log('Authenticated:', user.username);
+      console.log('Authenticated as:', user.username);
     });
 
     socketService.on('auth:error', (msg) => {
@@ -305,18 +302,31 @@ class WChatApp {
 
     // Voice signaling
     socketService.on('voice:user-joined', async (data) => {
-      if (this.isInVoice) await voiceService.handleUserJoined(data.userId);
+      console.log('Voice user joined:', data.userId);
+      if (this.isInVoice) {
+        await voiceService.handleUserJoined(data.userId);
+        // Update voice panel with new member
+        const user = uiComponent.users.find(u => u.id === data.userId);
+        if (user) {
+          Helpers.showToast(`${user.username || data.username} انضم للمكالمة`, 'info');
+        }
+      }
     });
 
     socketService.on('voice:user-left', (data) => {
+      console.log('Voice user left:', data.userId);
       voiceService.handleUserLeft(data.userId);
     });
 
     socketService.on('voice:offer', async (data) => {
-      if (this.isInVoice) await voiceService.handleOffer(data.from, data.offer);
+      console.log('Received voice offer from:', data.from);
+      if (this.isInVoice) {
+        await voiceService.handleOffer(data.from, data.offer);
+      }
     });
 
     socketService.on('voice:answer', async (data) => {
+      console.log('Received voice answer from:', data.from);
       await voiceService.handleAnswer(data.from, data.answer);
     });
 
@@ -338,20 +348,19 @@ class WChatApp {
 
     const room = uiComponent.rooms.find(r => r.id === roomId);
     if (room) {
+      this.currentRoomType = room.type;
       document.getElementById('chat-title').textContent = room.name;
       document.getElementById('chat-icon').textContent = room.icon;
       document.getElementById('chat-subtitle').textContent =
-        room.type === 'voice' ? 'غرفة صوتية' : `${room.members} عضو`;
+        room.type === 'voice' ? 'غرفة صوتية - اضغط على زر المكالمة للانضمام' : `${room.members} عضو`;
+
+      // Show voice call button for ALL rooms
+      const voiceBtn = document.getElementById('voice-call-btn');
+      voiceBtn.style.display = 'flex';
     }
 
     document.getElementById('welcome-message')?.remove();
     document.getElementById('message-input-area').style.display = 'flex';
-
-    const voiceBtn = document.getElementById('voice-call-btn');
-    if (room && room.type === 'voice') {
-      voiceBtn.classList.remove('hidden');
-    }
-
     document.getElementById('sidebar').classList.remove('open');
     uiComponent.updateRooms(uiComponent.rooms);
   }
@@ -371,6 +380,9 @@ class WChatApp {
       document.getElementById('chat-icon').textContent = '💬';
       document.getElementById('chat-subtitle').textContent = 'محادثة خاصة';
     }
+
+    // Show voice call for DMs too
+    document.getElementById('voice-call-btn').style.display = 'flex';
 
     uiComponent.dmUsers.add(userId);
     uiComponent.updateDMList();
@@ -458,10 +470,7 @@ class WChatApp {
       const res = await fetch('/upload', { method: 'POST', body: formData });
       const data = await res.json();
 
-      if (data.error) {
-        Helpers.showToast('فشل رفع الملف', 'error');
-        return;
-      }
+      if (data.error) { Helpers.showToast('فشل رفع الملف', 'error'); return; }
 
       const type = Helpers.isImage(file.name) ? 'image' : 'file';
       const msgData = { content: file.name, type, fileUrl: data.url, fileName: data.name };
@@ -471,7 +480,7 @@ class WChatApp {
       } else if (this.currentRoom) {
         socketService.sendMessage({ roomId: this.currentRoom, ...msgData });
       }
-    } catch {
+    } catch (e) {
       Helpers.showToast('خطأ في رفع الملف', 'error');
     }
   }
@@ -495,8 +504,12 @@ class WChatApp {
     const recordSend = document.getElementById('recording-send');
 
     voiceCallBtn.addEventListener('click', async () => {
-      if (this.isInVoice) this.leaveVoice();
-      else await this.joinVoice();
+      console.log('Voice call button clicked, isInVoice:', this.isInVoice);
+      if (this.isInVoice) {
+        this.leaveVoice();
+      } else {
+        await this.joinVoice();
+      }
     });
 
     muteBtn.addEventListener('click', () => {
@@ -551,7 +564,7 @@ class WChatApp {
           } else if (this.currentRoom) {
             socketService.sendMessage({ roomId: this.currentRoom, ...msgData });
           }
-        } catch {
+        } catch (e) {
           Helpers.showToast('خطأ في إرسال الرسالة الصوتية', 'error');
         }
       }
@@ -559,12 +572,24 @@ class WChatApp {
   }
 
   async joinVoice() {
-    if (!this.currentRoom) return;
+    // Must be in a room first
+    if (!this.currentRoom) {
+      Helpers.showToast('اختر غرفة أولاً', 'warning');
+      return;
+    }
+
+    console.log('Joining voice in room:', this.currentRoom);
     const success = await voiceService.joinVoice(this.currentRoom);
     if (success) {
       this.isInVoice = true;
       uiComponent.updateVoicePanel(true, [{ id: socketService.id, username: this.user.username, avatar: this.user.avatar }]);
-      document.getElementById('voice-call-btn').querySelector('i').className = 'fas fa-phone-slash';
+
+      const btn = document.getElementById('voice-call-btn');
+      btn.querySelector('i').className = 'fas fa-phone-slash';
+      btn.style.background = 'var(--danger)';
+      btn.style.color = 'white';
+
+      console.log('Voice joined successfully');
     }
   }
 
@@ -572,7 +597,12 @@ class WChatApp {
     voiceService.leaveVoice();
     this.isInVoice = false;
     uiComponent.updateVoicePanel(false);
-    document.getElementById('voice-call-btn').querySelector('i').className = 'fas fa-phone';
+
+    const btn = document.getElementById('voice-call-btn');
+    btn.querySelector('i').className = 'fas fa-phone';
+    btn.style.background = '';
+    btn.style.color = '';
+
     Helpers.showToast('غادرت المكالمة الصوتية', 'info');
   }
 
@@ -601,7 +631,6 @@ class WChatApp {
       dot.className = `status-dot ${e.target.value}`;
     });
 
-    // Logout
     document.getElementById('logout-btn').addEventListener('click', () => {
       this.logout();
     });

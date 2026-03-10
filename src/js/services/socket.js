@@ -6,29 +6,40 @@ class SocketService {
   constructor() {
     this.socket = null;
     this.listeners = {};
+    this.connected = false;
   }
 
   connect() {
+    if (this.socket) {
+      this.socket.disconnect();
+    }
+
     this.socket = io({
-      transports: ['websocket', 'polling']
+      transports: ['websocket', 'polling'],
+      reconnection: true,
+      reconnectionDelay: 1000,
+      reconnectionAttempts: 10
     });
 
     this.socket.on('connect', () => {
-      console.log('Connected to server');
+      console.log('Connected to server:', this.socket.id);
+      this.connected = true;
       this.emit('_connected');
     });
 
-    this.socket.on('disconnect', () => {
-      console.log('Disconnected from server');
+    this.socket.on('disconnect', (reason) => {
+      console.log('Disconnected:', reason);
+      this.connected = false;
       Helpers.showToast('انقطع الاتصال بالسيرفر', 'error');
     });
 
-    this.socket.on('connect_error', () => {
-      Helpers.showToast('خطأ في الاتصال', 'error');
+    this.socket.on('connect_error', (err) => {
+      console.error('Connection error:', err.message);
     });
 
-    // Forward all events to registered listeners
+    // Forward all server events to internal listeners
     const events = [
+      'auth:success', 'auth:error',
       'users:update', 'rooms:list', 'rooms:update',
       'room:messages', 'message:new', 'message:reacted',
       'dm:new', 'dm:messages',
@@ -44,41 +55,35 @@ class SocketService {
     });
   }
 
-  // Register user
-  register(userData) {
-    this.socket.emit('user:register', userData);
+  // Auth
+  authenticate(token) {
+    this.socket.emit('auth:token', { token });
   }
 
-  // Join room
   joinRoom(roomId) {
     this.socket.emit('room:join', roomId);
   }
 
-  // Send message
   sendMessage(data) {
     this.socket.emit('message:send', data);
   }
 
-  // Send DM
   sendDM(data) {
     this.socket.emit('dm:send', data);
   }
 
-  // Get DM history
   getDMHistory(targetId) {
     this.socket.emit('dm:history', targetId);
   }
 
-  // Typing
   startTyping(roomId) {
-    this.socket.emit('typing:start', roomId);
+    if (roomId) this.socket.emit('typing:start', roomId);
   }
 
   stopTyping(roomId) {
-    this.socket.emit('typing:stop', roomId);
+    if (roomId) this.socket.emit('typing:stop', roomId);
   }
 
-  // Voice
   joinVoice(roomId) {
     this.socket.emit('voice:join', roomId);
   }
@@ -99,12 +104,10 @@ class SocketService {
     this.socket.emit('voice:ice-candidate', data);
   }
 
-  // React to message
   reactToMessage(data) {
     this.socket.emit('message:react', data);
   }
 
-  // Update status
   updateStatus(status) {
     this.socket.emit('user:status', status);
   }
@@ -118,6 +121,10 @@ class SocketService {
   off(event, callback) {
     if (!this.listeners[event]) return;
     this.listeners[event] = this.listeners[event].filter(cb => cb !== callback);
+  }
+
+  clearListeners() {
+    this.listeners = {};
   }
 
   emit(event, data) {

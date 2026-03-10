@@ -1,14 +1,15 @@
 /* ================================
-   Chat Messages Styles
+   Chat Messages - Messenger Style
    ================================ */
 
 .messages-area {
   flex: 1;
   overflow-y: auto;
-  padding: 20px;
+  padding: 16px;
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: 2px;
+  scroll-behavior: smooth;
 }
 
 .welcome-message {
@@ -22,42 +23,29 @@
   opacity: 0.6;
 }
 
-.welcome-icon {
-  font-size: 64px;
-}
+.welcome-icon { font-size: 64px; }
+.welcome-message h2 { font-size: 22px; font-weight: 700; }
+.welcome-message p { color: var(--text-secondary); }
 
-.welcome-message h2 {
-  font-size: 22px;
-  font-weight: 700;
-}
-
-.welcome-message p {
-  color: var(--text-secondary);
-}
-
-/* Message */
+/* Message Bubble Style (Messenger-like) */
 .message {
   display: flex;
-  gap: 12px;
-  padding: 8px 12px;
-  border-radius: var(--radius-sm);
-  transition: var(--transition);
+  gap: 8px;
+  padding: 2px 8px;
   max-width: 100%;
-  animation: msgIn 0.2s ease;
+  animation: msgSlide 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+  position: relative;
+  align-items: flex-end;
 }
 
-@keyframes msgIn {
-  from { opacity: 0; transform: translateY(8px); }
-  to { opacity: 1; transform: translateY(0); }
-}
-
-.message:hover {
-  background: rgba(255, 255, 255, 0.02);
+@keyframes msgSlide {
+  from { opacity: 0; transform: translateY(12px) scale(0.97); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
 }
 
 .message-avatar {
-  width: 40px;
-  height: 40px;
+  width: 32px;
+  height: 32px;
   border-radius: 50%;
   flex-shrink: 0;
   object-fit: cover;
@@ -66,32 +54,70 @@
 .message-body {
   flex: 1;
   min-width: 0;
+  max-width: 70%;
 }
 
 .message-header {
   display: flex;
   align-items: center;
   gap: 8px;
-  margin-bottom: 4px;
+  margin-bottom: 2px;
+  padding-right: 4px;
 }
 
 .message-username {
   font-weight: 700;
-  font-size: 14px;
+  font-size: 12px;
   color: var(--primary-light);
 }
 
 .message-time {
-  font-size: 11px;
+  font-size: 10px;
   color: var(--text-muted);
 }
 
+/* Message Bubble */
 .message-content {
+  display: inline-block;
+  padding: 10px 16px;
+  background: var(--bg-card);
+  border-radius: 18px 18px 4px 18px;
   font-size: 14px;
   line-height: 1.5;
   color: var(--text-primary);
   word-wrap: break-word;
   overflow-wrap: break-word;
+  max-width: 100%;
+  transition: background 0.2s;
+}
+
+.message-content:hover {
+  background: var(--bg-hover);
+}
+
+/* Own messages - different style */
+.message.own {
+  flex-direction: row-reverse;
+}
+
+.message.own .message-body {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+}
+
+.message.own .message-content {
+  background: var(--primary);
+  color: white;
+  border-radius: 18px 18px 18px 4px;
+}
+
+.message.own .message-content:hover {
+  background: var(--primary-dark);
+}
+
+.message.own .message-header {
+  flex-direction: row-reverse;
 }
 
 .message-content a {
@@ -99,19 +125,19 @@
   text-decoration: none;
 }
 
+.message.own .message-content a {
+  color: rgba(255, 255, 255, 0.9);
+  text-decoration: underline;
+}
+
 .message-content a:hover {
   text-decoration: underline;
 }
 
 /* Compact message (same user) */
-.message.compact {
-  padding-top: 2px;
-  padding-bottom: 2px;
-}
-
 .message.compact .message-avatar {
   visibility: hidden;
-  width: 40px;
+  width: 32px;
 }
 
 .message.compact .message-header {
@@ -122,37 +148,39 @@
 .voice-message {
   display: flex;
   align-items: center;
-  gap: 12px;
-  padding: 10px 16px;
+  gap: 10px;
+  padding: 10px 14px;
   background: var(--bg-card);
-  border-radius: var(--radius);
-  max-width: 320px;
-  margin-top: 4px;
+  border-radius: 18px;
+  max-width: 280px;
+  margin-top: 2px;
+}
+
+.message.own .voice-message {
+  background: var(--primary);
 }
 
 .voice-message-btn {
-  width: 36px;
-  height: 36px;
+  width: 34px;
+  height: 34px;
   border-radius: 50%;
   border: none;
-  background: var(--primary);
+  background: rgba(255,255,255,0.2);
   color: white;
-  font-size: 14px;
+  font-size: 13px;
   cursor: pointer;
   display: flex;
   align-items: center;
   justify-content: center;
-  transition: var(--transition);
+  transition: all 0.2s;
   flex-shrink: 0;
 }
 
-.voice-message-btn:hover {
-  background: var(--primary-dark);
-}
+.voice-message-btn:hover { transform: scale(1.1); }
 
 .voice-waveform {
   flex: 1;
-  height: 32px;
+  height: 28px;
   display: flex;
   align-items: center;
   gap: 2px;
@@ -160,157 +188,124 @@
 
 .voice-waveform .bar {
   width: 3px;
-  background: var(--primary-light);
+  background: rgba(255,255,255,0.5);
   border-radius: 2px;
-  opacity: 0.5;
 }
 
 .voice-duration {
-  font-size: 12px;
-  color: var(--text-muted);
+  font-size: 11px;
+  color: rgba(255,255,255,0.7);
   flex-shrink: 0;
 }
 
 /* Image Message */
 .message-image {
-  max-width: 360px;
-  max-height: 300px;
-  border-radius: var(--radius-sm);
-  margin-top: 4px;
+  max-width: 300px;
+  max-height: 260px;
+  border-radius: 16px;
+  margin-top: 2px;
   cursor: pointer;
-  transition: var(--transition);
+  transition: all 0.2s;
+  object-fit: cover;
 }
 
 .message-image:hover {
   opacity: 0.9;
+  transform: scale(1.01);
 }
 
 /* File Message */
 .file-message {
   display: flex;
   align-items: center;
-  gap: 12px;
-  padding: 12px 16px;
+  gap: 10px;
+  padding: 10px 14px;
   background: var(--bg-card);
-  border-radius: var(--radius);
-  max-width: 320px;
-  margin-top: 4px;
+  border-radius: 16px;
+  max-width: 280px;
+  margin-top: 2px;
   text-decoration: none;
   color: var(--text-primary);
-  transition: var(--transition);
+  transition: all 0.2s;
 }
 
-.file-message:hover {
-  background: var(--bg-hover);
-}
+.file-message:hover { background: var(--bg-hover); }
 
 .file-icon {
-  width: 40px;
-  height: 40px;
-  border-radius: var(--radius-sm);
+  width: 36px;
+  height: 36px;
+  border-radius: 10px;
   background: var(--primary);
   color: white;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 18px;
+  font-size: 16px;
   flex-shrink: 0;
 }
 
-.file-info {
-  flex: 1;
-  min-width: 0;
-}
-
-.file-name {
-  font-size: 13px;
-  font-weight: 600;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-.file-size {
-  font-size: 11px;
-  color: var(--text-muted);
-}
+.file-info { flex: 1; min-width: 0; }
+.file-name { font-size: 13px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.file-size { font-size: 11px; color: var(--text-muted); }
 
 /* Reactions */
 .message-reactions {
   display: flex;
   flex-wrap: wrap;
   gap: 4px;
-  margin-top: 6px;
+  margin-top: 4px;
 }
 
 .reaction {
   display: flex;
   align-items: center;
-  gap: 4px;
+  gap: 3px;
   padding: 2px 8px;
   background: var(--bg-card);
   border: 1px solid var(--border);
   border-radius: 12px;
   font-size: 13px;
   cursor: pointer;
-  transition: var(--transition);
+  transition: all 0.2s;
 }
 
-.reaction:hover {
-  background: var(--bg-hover);
-}
+.reaction:hover { background: var(--bg-hover); transform: scale(1.05); }
+.reaction.mine { border-color: var(--primary); background: rgba(108, 92, 231, 0.15); }
+.reaction-count { font-size: 11px; color: var(--text-secondary); }
 
-.reaction.mine {
-  border-color: var(--primary);
-  background: rgba(108, 92, 231, 0.15);
-}
-
-.reaction-count {
-  font-size: 11px;
-  color: var(--text-secondary);
-}
-
-/* Message Actions (on hover) */
+/* Message Actions */
 .message-actions {
   display: none;
   position: absolute;
-  top: -16px;
+  top: -12px;
   left: 8px;
   background: var(--bg-card);
   border: 1px solid var(--border);
-  border-radius: var(--radius-sm);
-  padding: 4px;
+  border-radius: 20px;
+  padding: 3px;
   box-shadow: var(--shadow);
   gap: 2px;
+  z-index: 10;
 }
 
-.message:hover .message-actions {
-  display: flex;
-}
-
-.message {
-  position: relative;
-}
+.message:hover .message-actions { display: flex; }
 
 .msg-action-btn {
-  width: 30px;
-  height: 30px;
+  width: 28px;
+  height: 28px;
   border: none;
   background: none;
   color: var(--text-muted);
-  border-radius: 6px;
+  border-radius: 50%;
   cursor: pointer;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 13px;
-  transition: var(--transition);
+  font-size: 12px;
+  transition: all 0.2s;
 }
 
-.msg-action-btn:hover {
-  background: var(--bg-hover);
-  color: var(--text-primary);
-}
+.msg-action-btn:hover { background: var(--bg-hover); color: var(--text-primary); }
 
 /* Typing Indicator */
 .typing-indicator {
@@ -340,46 +335,40 @@
 
 @keyframes typingDot {
   0%, 60%, 100% { opacity: 0.3; transform: scale(0.8); }
-  30% { opacity: 1; transform: scale(1); }
+  30% { opacity: 1; transform: scale(1.2); }
 }
 
 /* ================================
-   Message Input
+   Message Input (Messenger Style)
    ================================ */
 
 .message-input-area {
-  padding: 12px 20px;
+  padding: 8px 16px 12px;
   display: flex;
   align-items: flex-end;
-  gap: 10px;
-  border-top: 1px solid var(--border);
+  gap: 8px;
   background: var(--bg-secondary);
+  border-top: 1px solid var(--border);
 }
 
-.input-actions {
-  display: flex;
-  gap: 4px;
-}
+.input-actions { display: flex; gap: 2px; }
 
 .action-btn {
-  width: 40px;
-  height: 40px;
+  width: 38px;
+  height: 38px;
   border: none;
-  background: var(--bg-hover);
-  color: var(--text-secondary);
-  border-radius: var(--radius-sm);
+  background: none;
+  color: var(--primary-light);
+  border-radius: 50%;
   cursor: pointer;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 16px;
-  transition: var(--transition);
+  font-size: 18px;
+  transition: all 0.2s;
 }
 
-.action-btn:hover {
-  background: var(--primary);
-  color: white;
-}
+.action-btn:hover { background: rgba(108, 92, 231, 0.15); transform: scale(1.1); }
 
 .input-wrapper {
   flex: 1;
@@ -390,10 +379,10 @@
 
 .input-wrapper textarea {
   width: 100%;
-  padding: 10px 44px 10px 14px;
+  padding: 10px 40px 10px 14px;
   background: var(--bg-input);
   border: 2px solid var(--border);
-  border-radius: var(--radius);
+  border-radius: 22px;
   color: var(--text-primary);
   font-family: var(--font);
   font-size: 14px;
@@ -401,21 +390,16 @@
   outline: none;
   max-height: 120px;
   line-height: 1.5;
-  transition: border-color 0.3s;
+  transition: border-color 0.2s;
 }
 
-.input-wrapper textarea:focus {
-  border-color: var(--primary);
-}
-
-.input-wrapper textarea::placeholder {
-  color: var(--text-muted);
-}
+.input-wrapper textarea:focus { border-color: var(--primary); }
+.input-wrapper textarea::placeholder { color: var(--text-muted); }
 
 .emoji-btn {
   position: absolute;
   left: 8px;
-  bottom: 8px;
+  bottom: 6px;
   width: 28px;
   height: 28px;
   border: none;
@@ -427,57 +411,46 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  transition: var(--transition);
+  transition: all 0.2s;
 }
 
-.emoji-btn:hover {
-  color: var(--warning);
-}
+.emoji-btn:hover { color: var(--warning); transform: scale(1.15); }
 
-.input-send {
-  display: flex;
-  gap: 4px;
-}
+.input-send { display: flex; gap: 2px; }
 
 .send-btn {
-  width: 40px;
-  height: 40px;
+  width: 38px;
+  height: 38px;
   border: none;
   background: var(--primary);
   color: white;
-  border-radius: var(--radius-sm);
+  border-radius: 50%;
   cursor: pointer;
   display: flex;
   align-items: center;
   justify-content: center;
   font-size: 16px;
-  transition: var(--transition);
+  transition: all 0.2s;
 }
 
-.send-btn:hover {
-  background: var(--primary-dark);
-  transform: scale(1.05);
-}
+.send-btn:hover { background: var(--primary-dark); transform: scale(1.1); }
 
 .voice-record-btn {
-  width: 40px;
-  height: 40px;
+  width: 38px;
+  height: 38px;
   border: none;
-  background: var(--bg-hover);
-  color: var(--text-secondary);
-  border-radius: var(--radius-sm);
+  background: none;
+  color: var(--primary-light);
+  border-radius: 50%;
   cursor: pointer;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 16px;
-  transition: var(--transition);
+  font-size: 18px;
+  transition: all 0.2s;
 }
 
-.voice-record-btn:hover {
-  background: var(--danger);
-  color: white;
-}
+.voice-record-btn:hover { color: var(--danger); transform: scale(1.1); }
 
 .voice-record-btn.recording {
   background: var(--danger);
@@ -487,47 +460,50 @@
 
 @keyframes recordPulse {
   0%, 100% { box-shadow: 0 0 0 0 rgba(231, 76, 60, 0.4); }
-  50% { box-shadow: 0 0 0 10px rgba(231, 76, 60, 0); }
+  50% { box-shadow: 0 0 0 12px rgba(231, 76, 60, 0); }
 }
 
 /* Emoji Picker */
 .emoji-picker {
   position: fixed;
-  bottom: 80px;
-  left: 80px;
-  width: 320px;
-  max-height: 300px;
+  bottom: 70px;
+  left: 70px;
+  width: 300px;
+  max-height: 280px;
   background: var(--bg-card);
   border: 1px solid var(--border);
   border-radius: var(--radius);
   box-shadow: var(--shadow-lg);
-  padding: 12px;
+  padding: 10px;
   overflow-y: auto;
   z-index: 50;
+  animation: fadeUp 0.2s ease;
+}
+
+@keyframes fadeUp {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
 }
 
 .emoji-grid {
   display: grid;
   grid-template-columns: repeat(8, 1fr);
-  gap: 4px;
+  gap: 2px;
 }
 
 .emoji-item {
-  width: 36px;
-  height: 36px;
+  width: 34px;
+  height: 34px;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 22px;
+  font-size: 20px;
   cursor: pointer;
-  border-radius: var(--radius-sm);
-  transition: var(--transition);
+  border-radius: 8px;
+  transition: all 0.15s;
 }
 
-.emoji-item:hover {
-  background: var(--bg-hover);
-  transform: scale(1.2);
-}
+.emoji-item:hover { background: var(--bg-hover); transform: scale(1.25); }
 
 /* Recording Overlay */
 .recording-overlay {
@@ -537,25 +513,25 @@
   transform: translateX(-50%);
   background: var(--bg-card);
   border: 1px solid var(--border);
-  border-radius: var(--radius-lg);
-  padding: 24px 40px;
+  border-radius: 24px;
+  padding: 20px 36px;
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 16px;
+  gap: 14px;
   box-shadow: var(--shadow-lg);
   z-index: 50;
-  animation: slideUp 0.3s ease;
+  animation: fadeUp 0.3s ease;
 }
 
 .recording-animation {
   position: relative;
-  width: 60px;
-  height: 60px;
+  width: 56px;
+  height: 56px;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 24px;
+  font-size: 22px;
   color: white;
 }
 
@@ -567,10 +543,7 @@
   animation: recordPulse 1s infinite;
 }
 
-.recording-animation i {
-  position: relative;
-  z-index: 1;
-}
+.recording-animation i { position: relative; z-index: 1; }
 
 .recording-time {
   font-size: 18px;
@@ -578,44 +551,27 @@
   font-variant-numeric: tabular-nums;
 }
 
-.recording-actions {
-  display: flex;
-  gap: 12px;
-}
+.recording-actions { display: flex; gap: 10px; }
 
 .recording-cancel,
 .recording-send {
-  padding: 8px 20px;
+  padding: 8px 18px;
   border: none;
-  border-radius: var(--radius-sm);
+  border-radius: 20px;
   font-family: var(--font);
-  font-size: 14px;
+  font-size: 13px;
   font-weight: 600;
   cursor: pointer;
   display: flex;
   align-items: center;
   gap: 6px;
-  transition: var(--transition);
+  transition: all 0.2s;
 }
 
-.recording-cancel {
-  background: var(--bg-hover);
-  color: var(--text-secondary);
-}
-
-.recording-cancel:hover {
-  background: var(--danger);
-  color: white;
-}
-
-.recording-send {
-  background: var(--primary);
-  color: white;
-}
-
-.recording-send:hover {
-  background: var(--primary-dark);
-}
+.recording-cancel { background: var(--bg-hover); color: var(--text-secondary); }
+.recording-cancel:hover { background: var(--danger); color: white; }
+.recording-send { background: var(--primary); color: white; }
+.recording-send:hover { background: var(--primary-dark); }
 
 /* Date Separator */
 .date-separator {
@@ -643,4 +599,28 @@
   font-size: 13px;
   color: var(--text-muted);
   font-style: italic;
+}
+
+/* ================================
+   Mobile Responsive
+   ================================ */
+
+@media (max-width: 768px) {
+  .message-body { max-width: 85%; }
+
+  .message-input-area { padding: 6px 10px 8px; gap: 4px; }
+
+  .input-wrapper textarea {
+    padding: 8px 36px 8px 12px;
+    font-size: 15px;
+  }
+
+  .emoji-picker {
+    left: 10px;
+    right: 10px;
+    width: auto;
+    bottom: 60px;
+  }
+
+  .emoji-grid { grid-template-columns: repeat(7, 1fr); }
 }

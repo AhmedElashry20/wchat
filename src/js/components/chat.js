@@ -11,7 +11,6 @@ class ChatComponent {
     this.lastMessageDate = null;
   }
 
-  // Render messages for a room
   renderMessages(messages) {
     this.messagesArea.innerHTML = '';
     this.lastMessageUser = null;
@@ -31,7 +30,6 @@ class ChatComponent {
     this.scrollToBottom();
   }
 
-  // Append a single message
   appendMessage(msg, scroll = true) {
     const msgDate = Helpers.formatDate(msg.timestamp);
     if (msgDate !== this.lastMessageDate) {
@@ -47,10 +45,11 @@ class ChatComponent {
     if (welcome) welcome.remove();
 
     const isCompact = this.lastMessageUser === msg.userId;
-    this.lastMessageUser = msg.userId;
+    const isOwn = msg.userId === socketService.id || msg.from === socketService.id;
+    this.lastMessageUser = msg.userId || msg.from;
 
     const div = document.createElement('div');
-    div.className = `message ${isCompact ? 'compact' : ''}`;
+    div.className = `message ${isCompact ? 'compact' : ''} ${isOwn ? 'own' : ''}`;
     div.dataset.messageId = msg.id;
 
     let contentHtml = '';
@@ -59,7 +58,7 @@ class ChatComponent {
         const bars = Helpers.generateWaveform();
         contentHtml = `
           <div class="voice-message">
-            <button class="voice-message-btn" onclick="chatComponent.playVoice(this, '${Helpers.escapeHtml(msg.fileUrl)}')">
+            <button class="voice-message-btn" onclick="chatComponent.playVoice(this, '${Helpers.escapeHtml(msg.fileUrl || '')}')">
               <i class="fas fa-play"></i>
             </button>
             <div class="voice-waveform">
@@ -70,12 +69,12 @@ class ChatComponent {
         break;
 
       case 'image':
-        contentHtml = `<img class="message-image" src="${Helpers.escapeHtml(msg.fileUrl)}" alt="صورة" onclick="window.open('${Helpers.escapeHtml(msg.fileUrl)}')">`;
+        contentHtml = `<img class="message-image" src="${Helpers.escapeHtml(msg.fileUrl || '')}" alt="صورة" onclick="window.open('${Helpers.escapeHtml(msg.fileUrl || '')}')">`;
         break;
 
       case 'file':
         contentHtml = `
-          <a class="file-message" href="${Helpers.escapeHtml(msg.fileUrl)}" download="${Helpers.escapeHtml(msg.fileName || 'file')}">
+          <a class="file-message" href="${Helpers.escapeHtml(msg.fileUrl || '')}" download="${Helpers.escapeHtml(msg.fileName || 'file')}">
             <div class="file-icon"><i class="fas fa-${Helpers.getFileIcon(msg.fileName || '')}"></i></div>
             <div class="file-info">
               <div class="file-name">${Helpers.escapeHtml(msg.fileName || 'ملف')}</div>
@@ -85,7 +84,7 @@ class ChatComponent {
         break;
 
       default:
-        contentHtml = `<div class="message-content">${Helpers.linkify(Helpers.escapeHtml(msg.content))}</div>`;
+        contentHtml = `<div class="message-content">${Helpers.linkify(Helpers.escapeHtml(msg.content || ''))}</div>`;
     }
 
     // Reactions
@@ -104,10 +103,10 @@ class ChatComponent {
     }
 
     div.innerHTML = `
-      <img class="message-avatar" src="${msg.avatar}" alt="${Helpers.escapeHtml(msg.username)}">
+      <img class="message-avatar" src="${msg.avatar || ''}" alt="${Helpers.escapeHtml(msg.username || '')}">
       <div class="message-body">
         <div class="message-header">
-          <span class="message-username">${Helpers.escapeHtml(msg.username)}</span>
+          <span class="message-username">${Helpers.escapeHtml(msg.username || '')}</span>
           <span class="message-time">${Helpers.formatTime(msg.timestamp)}</span>
         </div>
         ${contentHtml}
@@ -123,7 +122,6 @@ class ChatComponent {
     if (scroll) this.scrollToBottom();
   }
 
-  // Update reactions on a message
   updateReactions(messageId, reactions) {
     const msgEl = this.messagesArea.querySelector(`[data-message-id="${messageId}"]`);
     if (!msgEl) return;
@@ -146,15 +144,11 @@ class ChatComponent {
     }
   }
 
-  // React to message
   react(messageId, emoji) {
     const roomId = this.currentRoom || this.currentDM;
-    if (roomId) {
-      socketService.reactToMessage({ messageId, emoji, roomId });
-    }
+    if (roomId) socketService.reactToMessage({ messageId, emoji, roomId });
   }
 
-  // Show quick reaction picker
   showReactionPicker(messageId) {
     const quickEmojis = ['❤️', '👍', '😂', '😮', '😢', '🔥'];
     const existing = document.querySelector('.quick-reactions');
@@ -163,28 +157,24 @@ class ChatComponent {
     const picker = document.createElement('div');
     picker.className = 'quick-reactions';
     picker.style.cssText = `
-      position: fixed; z-index: 100; background: var(--bg-card);
-      border: 1px solid var(--border); border-radius: 24px;
-      padding: 6px 10px; display: flex; gap: 4px;
-      box-shadow: var(--shadow-lg);
+      position:fixed; z-index:100; background:var(--bg-card);
+      border:1px solid var(--border); border-radius:24px;
+      padding:6px 10px; display:flex; gap:4px;
+      box-shadow:var(--shadow-lg);
     `;
 
     quickEmojis.forEach(emoji => {
       const btn = document.createElement('span');
-      btn.style.cssText = 'cursor:pointer; font-size:20px; padding:4px; border-radius:50%; transition:all 0.2s;';
+      btn.style.cssText = 'cursor:pointer;font-size:20px;padding:4px;border-radius:50%;transition:all 0.15s;';
       btn.textContent = emoji;
       btn.onmouseenter = () => btn.style.transform = 'scale(1.3)';
       btn.onmouseleave = () => btn.style.transform = 'scale(1)';
-      btn.onclick = () => {
-        this.react(messageId, emoji);
-        picker.remove();
-      };
+      btn.onclick = () => { this.react(messageId, emoji); picker.remove(); };
       picker.appendChild(btn);
     });
 
     document.body.appendChild(picker);
 
-    // Position near the message
     const msgEl = this.messagesArea.querySelector(`[data-message-id="${messageId}"]`);
     if (msgEl) {
       const rect = msgEl.getBoundingClientRect();
@@ -194,35 +184,24 @@ class ChatComponent {
 
     setTimeout(() => {
       const close = (e) => {
-        if (!picker.contains(e.target)) {
-          picker.remove();
-          document.removeEventListener('click', close);
-        }
+        if (!picker.contains(e.target)) { picker.remove(); document.removeEventListener('click', close); }
       };
       document.addEventListener('click', close);
     }, 10);
   }
 
-  // Play voice message
   playVoice(btn, url) {
+    if (!url) return;
     const icon = btn.querySelector('i');
     const audio = new Audio(url);
 
     icon.className = 'fas fa-pause';
     audio.play();
-
-    audio.onended = () => {
-      icon.className = 'fas fa-play';
-    };
+    audio.onended = () => { icon.className = 'fas fa-play'; };
 
     btn.onclick = () => {
-      if (audio.paused) {
-        audio.play();
-        icon.className = 'fas fa-pause';
-      } else {
-        audio.pause();
-        icon.className = 'fas fa-play';
-      }
+      if (audio.paused) { audio.play(); icon.className = 'fas fa-pause'; }
+      else { audio.pause(); icon.className = 'fas fa-play'; }
     };
   }
 
