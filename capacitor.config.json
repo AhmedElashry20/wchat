@@ -1,0 +1,25 @@
+{
+  "appId": "com.wchat.app",
+  "appName": "WChat",
+  "webDir": "public",
+  "server": {
+    "url": "http://192.168.100.210:3000",
+    "cleartext": true
+  },
+  "plugins": {
+    "StatusBar": {
+      "style": "DARK",
+      "backgroundColor": "#0F0F1A"
+    },
+    "Keyboard": {
+      "resize": "body",
+      "resizeOnFullScreen": true
+    }
+  },
+  "android": {
+    "allowMixedContent": true
+  },
+  "ios": {
+    "contentInset": "always"
+  }
+}
