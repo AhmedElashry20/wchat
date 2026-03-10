@@ -1,0 +1,265 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>WChat - دردشة صوتية ومحادثات</title>
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>💬</text></svg>">
+  <link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@300;400;500;700;800&display=swap" rel="stylesheet">
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" rel="stylesheet">
+  <link rel="stylesheet" href="/src/css/main.css">
+  <link rel="stylesheet" href="/src/css/chat.css">
+  <link rel="stylesheet" href="/src/css/voice.css">
+</head>
+<body>
+
+  <!-- Login Screen -->
+  <div id="login-screen" class="login-screen">
+    <div class="login-container">
+      <div class="login-logo">
+        <div class="logo-icon">
+          <i class="fas fa-comment-dots"></i>
+        </div>
+        <h1>WChat</h1>
+        <p>تواصل بلا حدود</p>
+      </div>
+      <form id="login-form" class="login-form">
+        <div class="input-group">
+          <i class="fas fa-user"></i>
+          <input type="text" id="username-input" placeholder="اسم المستخدم" required minlength="2" maxlength="20" autocomplete="off">
+        </div>
+        <div class="avatar-picker">
+          <p>اختر لون الأفاتار</p>
+          <div class="avatar-colors" id="avatar-colors">
+            <div class="avatar-color selected" data-color="#6C5CE7" style="background:#6C5CE7"></div>
+            <div class="avatar-color" data-color="#00B894" style="background:#00B894"></div>
+            <div class="avatar-color" data-color="#E17055" style="background:#E17055"></div>
+            <div class="avatar-color" data-color="#0984E3" style="background:#0984E3"></div>
+            <div class="avatar-color" data-color="#E84393" style="background:#E84393"></div>
+            <div class="avatar-color" data-color="#FDCB6E" style="background:#FDCB6E"></div>
+          </div>
+        </div>
+        <button type="submit" class="login-btn">
+          <span>دخول</span>
+          <i class="fas fa-arrow-left"></i>
+        </button>
+      </form>
+    </div>
+    <div class="login-bg-shapes">
+      <div class="shape shape-1"></div>
+      <div class="shape shape-2"></div>
+      <div class="shape shape-3"></div>
+    </div>
+  </div>
+
+  <!-- Main App -->
+  <div id="app" class="app hidden">
+    <!-- Sidebar -->
+    <aside class="sidebar" id="sidebar">
+      <div class="sidebar-header">
+        <div class="logo-small">
+          <i class="fas fa-comment-dots"></i>
+          <span>WChat</span>
+        </div>
+        <button class="sidebar-toggle" id="sidebar-toggle">
+          <i class="fas fa-bars"></i>
+        </button>
+      </div>
+
+      <!-- User Profile -->
+      <div class="user-profile" id="user-profile">
+        <div class="user-avatar">
+          <img id="my-avatar" src="" alt="">
+          <span class="status-dot online"></span>
+        </div>
+        <div class="user-info">
+          <span class="user-name" id="my-username"></span>
+          <select id="status-select" class="status-select">
+            <option value="online">متصل</option>
+            <option value="away">بالخارج</option>
+            <option value="busy">مشغول</option>
+            <option value="offline">غير متصل</option>
+          </select>
+        </div>
+      </div>
+
+      <!-- Navigation Tabs -->
+      <div class="nav-tabs">
+        <button class="nav-tab active" data-tab="rooms">
+          <i class="fas fa-hashtag"></i>
+          <span>الغرف</span>
+        </button>
+        <button class="nav-tab" data-tab="dms">
+          <i class="fas fa-envelope"></i>
+          <span>الرسائل</span>
+        </button>
+        <button class="nav-tab" data-tab="users">
+          <i class="fas fa-users"></i>
+          <span>الأعضاء</span>
+        </button>
+      </div>
+
+      <!-- Rooms List -->
+      <div class="tab-content active" id="rooms-tab">
+        <div class="section-title">
+          <span>غرف نصية</span>
+        </div>
+        <div id="text-rooms" class="rooms-list"></div>
+        <div class="section-title">
+          <span>غرف صوتية</span>
+        </div>
+        <div id="voice-rooms" class="rooms-list"></div>
+      </div>
+
+      <!-- DMs List -->
+      <div class="tab-content" id="dms-tab">
+        <div id="dm-list" class="dm-list"></div>
+      </div>
+
+      <!-- Users List -->
+      <div class="tab-content" id="users-tab">
+        <div class="search-box">
+          <i class="fas fa-search"></i>
+          <input type="text" id="user-search" placeholder="بحث عن عضو...">
+        </div>
+        <div id="users-list" class="users-list"></div>
+      </div>
+    </aside>
+
+    <!-- Main Content -->
+    <main class="main-content">
+      <!-- Chat Header -->
+      <header class="chat-header" id="chat-header">
+        <button class="mobile-menu-btn" id="mobile-menu-btn">
+          <i class="fas fa-bars"></i>
+        </button>
+        <div class="chat-header-info">
+          <span class="chat-icon" id="chat-icon">💬</span>
+          <div>
+            <h2 id="chat-title">عام</h2>
+            <span class="chat-subtitle" id="chat-subtitle">اختر غرفة للبدء</span>
+          </div>
+        </div>
+        <div class="chat-header-actions">
+          <button class="header-btn" id="voice-call-btn" title="مكالمة صوتية">
+            <i class="fas fa-phone"></i>
+          </button>
+          <button class="header-btn" id="members-toggle" title="الأعضاء">
+            <i class="fas fa-user-friends"></i>
+          </button>
+        </div>
+      </header>
+
+      <!-- Chat Area -->
+      <div class="chat-container">
+        <div class="messages-area" id="messages-area">
+          <div class="welcome-message" id="welcome-message">
+            <div class="welcome-icon">💬</div>
+            <h2>مرحباً بك في WChat</h2>
+            <p>اختر غرفة من القائمة الجانبية لبدء المحادثة</p>
+          </div>
+        </div>
+
+        <!-- Typing Indicator -->
+        <div class="typing-indicator hidden" id="typing-indicator">
+          <span id="typing-user"></span> يكتب
+          <div class="typing-dots">
+            <span></span><span></span><span></span>
+          </div>
+        </div>
+
+        <!-- Voice Chat Panel -->
+        <div class="voice-panel hidden" id="voice-panel">
+          <div class="voice-panel-header">
+            <h3><i class="fas fa-microphone"></i> مكالمة صوتية</h3>
+            <span class="voice-timer" id="voice-timer">00:00</span>
+          </div>
+          <div class="voice-members" id="voice-members"></div>
+          <div class="voice-controls">
+            <button class="voice-btn" id="mute-btn" title="كتم">
+              <i class="fas fa-microphone"></i>
+            </button>
+            <button class="voice-btn" id="deafen-btn" title="إلغاء السماع">
+              <i class="fas fa-headphones"></i>
+            </button>
+            <button class="voice-btn danger" id="voice-leave-btn" title="مغادرة">
+              <i class="fas fa-phone-slash"></i>
+            </button>
+          </div>
+        </div>
+
+        <!-- Message Input -->
+        <div class="message-input-area" id="message-input-area">
+          <div class="input-actions">
+            <button class="action-btn" id="attach-btn" title="إرفاق ملف">
+              <i class="fas fa-paperclip"></i>
+            </button>
+            <input type="file" id="file-input" hidden>
+          </div>
+          <div class="input-wrapper">
+            <textarea id="message-input" placeholder="اكتب رسالتك..." rows="1"></textarea>
+            <button class="emoji-btn" id="emoji-btn" title="إيموجي">
+              <i class="fas fa-smile"></i>
+            </button>
+          </div>
+          <div class="input-send">
+            <button class="send-btn" id="send-btn" title="إرسال">
+              <i class="fas fa-paper-plane"></i>
+            </button>
+            <button class="voice-record-btn" id="voice-record-btn" title="رسالة صوتية">
+              <i class="fas fa-microphone"></i>
+            </button>
+          </div>
+        </div>
+      </div>
+    </main>
+
+    <!-- Members Sidebar -->
+    <aside class="members-sidebar hidden" id="members-sidebar">
+      <div class="members-header">
+        <h3>الأعضاء</h3>
+        <button class="close-members" id="close-members">
+          <i class="fas fa-times"></i>
+        </button>
+      </div>
+      <div class="members-list" id="room-members"></div>
+    </aside>
+  </div>
+
+  <!-- Emoji Picker -->
+  <div class="emoji-picker hidden" id="emoji-picker">
+    <div class="emoji-grid" id="emoji-grid"></div>
+  </div>
+
+  <!-- Audio elements for voice chat -->
+  <div id="audio-container" style="display:none"></div>
+
+  <!-- Voice Recording Overlay -->
+  <div class="recording-overlay hidden" id="recording-overlay">
+    <div class="recording-animation">
+      <div class="recording-circle"></div>
+      <i class="fas fa-microphone"></i>
+    </div>
+    <span class="recording-time" id="recording-time">00:00</span>
+    <div class="recording-actions">
+      <button class="recording-cancel" id="recording-cancel">
+        <i class="fas fa-trash"></i> إلغاء
+      </button>
+      <button class="recording-send" id="recording-send">
+        <i class="fas fa-paper-plane"></i> إرسال
+      </button>
+    </div>
+  </div>
+
+  <!-- Toast Notifications -->
+  <div class="toast-container" id="toast-container"></div>
+
+  <script src="/socket.io/socket.io.js"></script>
+  <script src="/src/js/utils/helpers.js"></script>
+  <script src="/src/js/services/socket.js"></script>
+  <script src="/src/js/services/voice.js"></script>
+  <script src="/src/js/components/chat.js"></script>
+  <script src="/src/js/components/ui.js"></script>
+  <script src="/src/js/app.js"></script>
+</body>
+</html>
